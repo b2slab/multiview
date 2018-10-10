@@ -1,0 +1,267 @@
+---
+title: "Package multiview"
+author: "Samir Kanaan-Izquierdo"
+date: "`r Sys.Date()`"
+bibliography: references.bib
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    number_sections: true
+vignette: >
+  \VignetteIndexEntry{Package multiview}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+# Introduction
+The `multiview` package provides multiview methods to work with multiview data. 
+It contains methods both for multiview dimensionality reduction and for 
+multiview clustering.
+
+## What is multiview data?
+Multiview data are datasets that comprise two or more data matrices on the same
+population. This is usually the case when several experiments or measurements
+have been performed on the same subjects. Examples of multiview datasets are:
+
+* A medical dataset that includes clinical history data, genetic expression data and
+medical imaging data from the same subjects.
+* A text corpus with the same documents translated to several languages (each language
+is a data view).
+* A scientific article dataset with two data views: the words of each document and a
+graph with the references between them.
+* An image dataset with different features extracted from the same input images (color
+histograms, different image descriptors, the raw pixels, and so on).
+* A dataset of images and associated description tags written by their authors.
+
+Multimodal and multifeature data are special cases of multiview data.
+
+The goal of this package is to provide the community multiview methods that take 
+advantage of the existence of several data views to improve the quality of the analysis. 
+
+
+## Multiview dimensionality reduction
+Given a multiview dataset with `v` input data matrices,
+multiview dimensionality reduction methods produce a single, low-dimensional
+projection of the input data samples, trying to mantain as much of the original
+information as possible.
+Package `multiview` offers the function `mvmds` to perform multiview
+dimensionality reduction in a similar way than the multidimensional scaling
+method (`stats:cmdscale`).
+Also, function `mvtsne` performs multiview dimensionality reduction, mostly
+suited for data visualization, in a similar way than the tSNE method (`tsne::tsne`).
+
+## Multiview clustering
+Given a multiview dataset with `v` input data matrices,
+multiview clustering methods produce a single clustering assignment, considering
+the information from all the input views.
+Package `multiview` offers the function `mvsc` to perform multiview
+spectral clustering. It is an extension to spectral clustering
+(`kernlab::specc`) to multiview datasets.
+
+
+# Multiview dimensionality reduction
+
+The input of a multiview dimensionality reduction problem is a dataset with `n` samples and
+`v` data views (matrices). The dataset is assumed to be complete, i.e. all input views have
+`n` rows, although the number of columns may vary. In fact, the different input views can be
+defined in feature space (one column per attribute) or in graph space (`n x n` matrices), where
+the value `m[i, j]` represents the relationship of sample `i` with sample `j`. A distance matrix
+is an example of graph space matrix.
+
+The multiview dimensionality reduction method then captures the essential information found in 
+all the input views to produce a single, low-dimensional output space. Therefore it performs two
+tasks:
+
+* To summarize the information from the different input views into a single view.
+* To reduce the number of dimensions of the input spaces while keeping the most relevant information.
+
+The exact order of the above operations depends on the specific algorithm used.
+
+Therefore, the final output of the method is a low-dimensional embedding of size `n x k`, where `k` 
+is the desired number of dimensions of the embedding as specified by the user.
+
+
+## Multiview multidimensional scaling
+
+Multidimensional scaling (MDS) [@kruskal1964a] is a well-known dimensionality reduction method. Although there
+exist several variants of this method, multiview MDS method proposed here follows the structure of the "classical" 
+MDS. The overall structure of the algorithm is as follows, where `k` is the desired dimensionality of the output
+space:
+
+1. Compute the distance matrices of the input matrices (when necessary).
+2. Double-center (by rows and columns) the distance matrices.
+3. Compute the common eigenvectors of the previous matrices. Return the `k` eigenvectors with highest eigenvalues as
+the output space.
+
+The common eigenvectors are computed using an algorithm derived from the algorithm proposed in [@Trendafilov2010].
+
+
+### Usage
+The `mvmds` function that implements the multiview multidimensional scaling method offers a simple interface, very
+similar to the single-view counterpart function `cmdscale`. First, instead of a single matrix of data to project,
+it requires a list of matrices. A list of matrices is used instead of a 3D matrix because the input matrices can
+have different number of columns. Moreover some or all of the input views may be `dist` objects. 
+The other parameter is the desired number of dimensions of the output space, which defaults to 2.
+
+The following example uses the **handwritten digits** dataset^[https://archive.ics.uci.edu/ml/datasets/Multiple+Features],
+that contains 2,000 handwritten digits from 0 to 9. There are 200 digits of each value, hence the definition of the vector
+of sample classes. 
+
+Six different feature sets are extracted from the digits images and
+provided in the dataset. From these, the next example uses four: the original pixels, the Fourier coefficients, the profile
+correlations and 6 morphological features. Then, `mvmds` is applied to these four data views in order to obtain a consistent
+low-dimensional representation of the digits that can be plotted. 
+
+```{r, fig.width=7, fig.height=7}
+library(multiview)
+fourier  <- read.table("../digits_data/mfeat-fou.txt", header=FALSE, sep="")
+profcorr <- read.table("../digits_data/mfeat-fac.txt", header=FALSE, sep="")
+pixels   <- read.table("../digits_data/mfeat-pix.txt", header=FALSE, sep="")
+morpho   <- read.table("../digits_data/mfeat-mor.txt", header=FALSE, sep="")
+
+classes <- as.vector(sapply(0:9, function(x) rep(x,200)))
+
+projection <- mvmds(list(fourier, profcorr, pixels, morpho), k=2)
+
+mypalette <- c("chartreuse", "blueviolet", "deeppink1", "cyan2", "black", "blue3", 
+              "gold1", "seagreen1", "gray60", "red")
+plot(projection[,1:2], col = mypalette[classes+1], 
+    pch = as.character(classes), axes = FALSE,  xlab="", ylab="")
+```
+
+As the example shows, `mvmds` simply requires the input views in a list as the first parameter and the desired dimensionality of the output space. Matrices and `dist` objects can be freely mixed in the list of input views.
+
+
+## Multiview t-stochastic neighbour embedding
+
+t-distributed stochastic neighbour embedding (t-SNE) [@maaten2008; maaten2008visualizing; maaten2010] is a dimensionality reduction technique oriented to the generation of 2 and 3 dimensional representations of data, so they can be used to visualize the data.
+Multiview t-SNE is a multiview extension of t-SNE that generates a single low-dimensional representation of several input views. Like the original t-SNE method, multiview t-SNE is a method designed to generate embeddings of low dimensionality, typically 2 or 3, for example for data visualization. 
+
+Given a dataset with `n` data samples and `v` data views, the overall steps of this method are:
+
+1. For each input data view, compute a `n x n` probability matrix. The `ij` value in these matrices are computed based on the distance from point `i` to point `j`, according to a Gaussian probability distribution.
+2. Combine the previous probability matrices into a single probability matrix `P` using expert opinion pooling theory, more specifically the log-linear formulation described in [@abbas2009] and the weight assignment proposed in [@carvalho2012].
+3. Randomly generate an initial projection of the data points. 
+4. Use gradient descent optimization to adjust the neighbourhood probability matrix of the data projection to the probability matrix `P`.
+
+### Usage
+
+The `mvtsne` function of this package accepts, in its simplest form, two parameters: a list of input views and the number of dimensions of the desired output space. The input views can be either feature matrices or `dist` objects (or a mix of both). In any case, the number of samples in all input views has to be the same, although the number of features can be different. `mvtsne` returns the low-dimensional embedding as well as the weight assigned to each input view.
+
+A basic usage example, with the same handwritten digits dataset described above, is presented next:
+
+```{r, fig.width=7, fig.height=7}
+library(multiview)
+fourier  <- read.table("../digits_data/mfeat-fou.txt", header=FALSE, sep="")
+profcorr <- read.table("../digits_data/mfeat-fac.txt", header=FALSE, sep="")
+pixels   <- read.table("../digits_data/mfeat-pix.txt", header=FALSE, sep="")
+morpho   <- read.table("../digits_data/mfeat-mor.txt", header=FALSE, sep="")
+
+classes <- as.vector(sapply(0:9, function(x) rep(x,200)))
+
+projection <- mvtsne(list(fourier, profcorr, pixels, morpho), k=2)
+
+mypalette <- c("chartreuse", "blueviolet", "deeppink1", "cyan2", "black", "blue3", 
+              "gold1", "seagreen1", "gray60", "red")
+
+plot(projection$embedding, col = mypalette[classes+1], 
+    pch = as.character(classes), axes = FALSE,  xlab="", ylab="")
+```
+
+The remaining parameters of `mvtsne` allow a fine adjustment of the method and they are equivalent to those in `tsne::tsne`.
+
+
+# Multiview clustering 
+
+The input of a multiview clustering problem is a dataset with `n` samples and
+`v` data views (matrices). The dataset is assumed to be complete, i.e. all input views have
+`n` rows, although the number of columns may vary. In fact, the different input views can be
+defined in feature space (one column per attribute) or in graph space (`n x n` matrices), where
+the value `m[i, j]` represents the relationship of sample `i` with sample `j`. A distance matrix
+is an example of graph space matrix.
+
+The multiview clustering method then captures the essential information found in 
+all the input views to produce a single clustering assignment. In other words, it performs two
+tasks:
+
+* To summarize the information from the different input views.
+* To find a clustering assignment of the `n` input samples that is compatible with the information
+from all input views.
+
+The exact order of the above operations depends on the specific algorithm used.
+
+Therefore, the final output of the method is a vector with `n` cluster labels, that can have `k`, where `k` 
+is the desired number of clusters as specified by the user.
+
+
+## Multiview spectral clustering
+
+Spectral clustering [@shimalik2000], [@Ng01onspectral] is a well known clustering method whose distinctive 
+feature is that it is capable of finding non-convex clusters, as it produces partitions of connected points.
+This is remarkably different from most classical clustering methods like k-means, that cluster points by distance,
+regardless of the topology and cohesion of the groups.
+
+Package `multiview` includes a multiview spectral clustering method, available through function `mvsc`. A summarized
+description of the method follows:
+
+1. A Gaussian radial basis function is applied to the input samples for each input matrix. This produces a `n x n` 
+matrix for each input view.
+2. The symmetrical Laplacian matrix of the previous matrices is computed.
+3. Using [@Trendafilov2010], the `k` first common eigenvectors of the Laplacian matrices are computed. This produces an
+`n x k` matrix that represents a clustering-oriented projection of the input data.
+4. K-means (a robust configuration) is applied to the previous matrix and the resulting clustering assignment is returned.
+
+
+### Usage
+
+Function `mvsc` first parameter is a list of input views, which can be either standard matrices (interpreted as sample/feature 
+matrices) or `dist` objects, or a mix of both. All input views must be complete, i.e. they must have the same number of samples. 
+The other mandatory parameter is `k`, an integer that controls the number of clusters produced. An example using the handwritten
+digits dataset described above follows:
+
+```{r, fig.width=7, fig.height=7}
+library(multiview)
+fourier  <- read.table("../digits_data/mfeat-fou.txt", header=FALSE, sep="")
+profcorr <- read.table("../digits_data/mfeat-fac.txt", header=FALSE, sep="")
+pixels   <- read.table("../digits_data/mfeat-pix.txt", header=FALSE, sep="")
+morpho   <- read.table("../digits_data/mfeat-mor.txt", header=FALSE, sep="")
+
+classes <- as.vector(sapply(0:9, function(x) rep(x,200)))
+
+clust   <- mvsc(list(fourier, profcorr, pixels, morpho), k=10)
+
+# $clustering member has the clustering assignment vector
+knitr::kable(table(classes, clust$clustering))
+```
+
+Note that the numbers assigned to each cluster are arbitrary, that is why they do not match with the original class labels. However, given the different numbering, the previous example shows the coincidence between the data classes and the clusters found.
+
+`mvsc` provides two parameters to fine-tune the clustering produced. First, parameter `sigmas` allows to specify the $\sigma$ parameter of the Gaussian radial basis function applied to the input views. This parameter can either be a vector of real values, with the $\sigma$ to use on each input view, or a single real value, meaning the same $\sigma$ will be used on all views.
+
+However, it can be difficult to estimate a proper value for $\sigma$. Therefore, a more intuitive parameter is provided, `neighbours`, which ultimately controls the $\sigma$ values used. This parameter usually is a single integer number specifying the average number of neighbours estimated for each data sample. Higher values cause more compact data projections, while lower values produce spread away projections. The practical consequences for clustering vary. Using too high values may end up merging different clusters, while using too low values may produce isolated islands of points, disconnected from their main cluster. 
+Parameter `neighbours` can also be a vector of integers, where each value is respectively used on each input view. In general this option is not recommended, as the intrinsic structure of the data should be the same across the different views and a single `neighbours` value should suit all the input views.
+
+Following the previous example, `neighbours` adjustment can be used to improve the results:
+```{r, fig.width=7, fig.height=7}
+clust   <- mvsc(list(fourier, profcorr, pixels, morpho), k=10, neighbours=2)
+
+# $clustering member has the clustering assignment vector
+knitr::kable(table(classes, clust$clustering))
+```
+
+As the latter table shows, there is a better coincidence between each class and each cluster obtained. 
+This parameter is ignored if `sigmas` is different from NULL. 
+
+If neither `sigmas` nor `neighbours` are given, then `mvsc` estimates the $\sigma$ of each input view using the heuristic proposed in [@Luxburg], i.e. as the average distance to the $\log n$-th neighbour. 
+
+Finally, parameter `clustering` allows the user to omit the final clustering phase (step 4 of the algorithm), and making `mvsc` return only the data projection computed.
+
+# Alternative use
+Although the methods in this package have been divided in dimensionality reduction and clustering, there is a close relationship between both tasks. In fact, all three methods can be used for both tasks.
+
+First, the data projection produced by dimensionality reduction methods can be fed to a standard clustering algorithm in order to obtain a multiview clustering. Second, as `mvsc` also returns the projection resulting from the `k` first common eigenvectors in matrix  `$evectors`, this space can also be used as a low-dimensional embedding of the original multiview data, for visualization or other purposes.
+
+
+# References
+

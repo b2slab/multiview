@@ -1,0 +1,26 @@
+Package: multiview
+Type: Package
+Title: Multiview Clustering and Dimensionality Reduction Methods
+Version: 0.1.0
+Authors@R: c(
+    person("Samir", "Kanaan-Izquierdo", email = "samir.kanaan@upc.edu", role = c("aut", "cre")),
+    person("Andrey", "Ziyatdinov", email = "ziyatdinov@hsph.harvard.edu", role = "aut"),
+    person("Alexandre", "Perera-Lluna", email = "alexandre.perera@upc.edu", role = "aut"))
+Description: Provides multiview methods to work with multiview data:
+    datasets with several data matrices on the same samples, usually from
+    different experiments or measurements performed on the same subjects. 
+    The package contains methods for multiview dimensionality reduction, multiview data
+    visualization and multiview clustering.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Imports: entropy, RSpectra, stats
+RoxygenNote: 6.0.1
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr
+NeedsCompilation: no
+Packaged: 2017-07-14 11:30:29 UTC; samir
+Author: Samir Kanaan-Izquierdo [aut, cre],
+  Andrey Ziyatdinov [aut],
+  Alexandre Perera-Lluna [aut]
+Maintainer: Samir Kanaan-Izquierdo <samir.kanaan@upc.edu>

@@ -1,0 +1,30 @@
+#' multiview: A package with multiview clustering and dimensionality reduction methods.
+#'
+#' The \code{multiview} package provides multiview methods to work with multiview data
+#' (datasets with several data matrices from the same samples). It contains methods
+#' for multiview dimensionality reduction and methods for multiview clustering.
+#'
+#' @section Multiview dimensionality reduction:
+#' Given a multiview dataset with \code{v} input data matrices,
+#' multiview dimensionality reduction methods produce a single, low-dimensional
+#' projection of the input data samples, trying to mantain as much of the original
+#' information as possible.
+#'
+#' Package \code{multiview} offers the function \code{\link{mvmds}} to perform multiview
+#' dimensionality reduction in a similar way than the multidimensional scaling
+#' method (\code{\link[stats]{cmdscale}}).
+#'
+#' Another dimensionality reduction function in this package is \code{\link{mvtsne}}, that
+#' extends \code{\link[tsne]{tsne}} to multiview data.
+#'
+#' @section Multiview clustering:
+#' Given a multiview dataset with \code{v} input data matrices,
+#' multiview clustering methods produce a single clustering assignment, considering
+#' the information from all the input views.
+#' Package \code{multiview} offers the function \code{\link{mvsc}} to perform multiview
+#' spectral clustering. It is an extension to spectral clustering
+#' (\code{\link[kernlab]{specc}}) to multiview datasets.
+#'
+#' @docType package
+#' @name multiview
+NULL
